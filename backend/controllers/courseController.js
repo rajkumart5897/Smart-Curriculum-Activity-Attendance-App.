@@ -1,12 +1,12 @@
 const Course = require('../models/Course');
 const Class = require('../models/Class');
 
-// @desc    Create a new course
+// @desc    Create a new course (with auto-class creation)
 // @route   POST /api/courses
 // @access  Private (Teacher/Admin)
 exports.createCourse = async (req, res) => {
   try {
-    const { courseCode, courseName, credits, classId, schedule } = req.body;
+    const { courseCode, courseName, credits } = req.body;
 
     // Check if course code exists
     const existingCourse = await Course.findOne({ courseCode });
@@ -17,13 +17,34 @@ exports.createCourse = async (req, res) => {
       });
     }
 
+    // Create a default class for this course if none exists
+    let defaultClass = await Class.findOne({ 
+      name: 'Default Class',
+      academicYear: '2024-2025' 
+    });
+
+    if (!defaultClass) {
+      defaultClass = await Class.create({
+        name: 'Default Class',
+        department: 'General',
+        year: 1,
+        semester: 1,
+        academicYear: '2024-2025',
+        coordinator: req.user.userId,
+        students: [],
+        isActive: true
+      });
+    }
+
     const course = await Course.create({
       courseCode,
       courseName,
       credits,
       instructor: req.user.userId,
-      class: classId,
-      schedule
+      class: defaultClass._id,
+      schedule: [],
+      semester: 1,
+      academicYear: '2024-2025'
     });
 
     res.status(201).json({
@@ -32,6 +53,7 @@ exports.createCourse = async (req, res) => {
       data: course
     });
   } catch (error) {
+    console.error('Create course error:', error);
     res.status(500).json({
       success: false,
       message: 'Error creating course',
@@ -79,6 +101,7 @@ exports.getMyCourses = async (req, res) => {
       data: courses
     });
   } catch (error) {
+    console.error('Get my courses error:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching courses',

@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
+const { getProfile, updateProfile, changePassword } = require('../controllers/userController');
 
-// Placeholder route
-router.get('/', protect, (req, res) => {
-  res.json({ success: true, message: 'User routes working' });
-});
+router.get('/profile', protect, getProfile);
+router.put('/profile', protect, updateProfile);
+router.put('/change-password', protect, changePassword);
 
 module.exports = router;

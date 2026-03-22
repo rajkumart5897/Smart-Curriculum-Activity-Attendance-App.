@@ -9,10 +9,10 @@ const crypto = require('crypto');
 // @access  Private (Teacher only)
 exports.generateQRCode = async (req, res) => {
   try {
-    const { courseId, classId, sessionType, topicCovered } = req.body;
+    const { courseId, sessionType, topicCovered, date, startTime, endTime } = req.body;
 
-    // Verify course exists
-    const course = await Course.findById(courseId);
+    // Verify course exists and populate class
+    const course = await Course.findById(courseId).populate('class');
     if (!course) {
       return res.status(404).json({
         success: false,
@@ -28,11 +28,33 @@ exports.generateQRCode = async (req, res) => {
       });
     }
 
+    // Get or create class
+    let classId = course.class;
+    
+    if (!classId) {
+      // Create a default class for this course
+      const newClass = await Class.create({
+        name: `Class for ${course.courseCode}`,
+        department: 'General',
+        year: 1,
+        semester: 1,
+        academicYear: '2024-2025',
+        coordinator: req.user.userId,
+        students: [],
+        isActive: true
+      });
+      
+      // Update course with new class
+      course.class = newClass._id;
+      await course.save();
+      classId = newClass._id;
+    }
+
     // Generate unique code
     const qrData = {
       code: crypto.randomBytes(16).toString('hex'),
       courseId,
-      classId,
+      classId: classId.toString(),
       timestamp: Date.now()
     };
 
@@ -47,8 +69,10 @@ exports.generateQRCode = async (req, res) => {
     const attendance = await Attendance.create({
       course: courseId,
       class: classId,
-      date: new Date(),
+      date: date ? new Date(date) : new Date(),  // ← Use provided date or current
       sessionType: sessionType || 'lecture',
+      startTime, 
+      endTime,    
       markedBy: req.user.userId,
       markingMethod: 'qr-code',
       qrCode: qrData.code,
@@ -258,7 +282,7 @@ exports.getStudentStats = async (req, res) => {
 // @access  Private (Teacher)
 exports.markManualAttendance = async (req, res) => {
   try {
-    const { courseId, classId, sessionType, topicCovered, records } = req.body;
+    const { courseId, sessionType, topicCovered, records } = req.body;
 
     // Verify course
     const course = await Course.findById(courseId);
@@ -276,6 +300,9 @@ exports.markManualAttendance = async (req, res) => {
         message: 'Only course instructor can mark attendance'
       });
     }
+
+    // Get classId from course
+    const classId = course.class;
 
     // Count present/absent
     let presentCount = 0;
