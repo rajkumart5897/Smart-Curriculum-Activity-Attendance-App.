@@ -22,7 +22,7 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/attendance', require('./routes/attendanceRoutes'));
 app.use('/api/courses', require('./routes/courseRoutes'));
-app.use('/api/classes', require('./routes/classRoutes'));
+//app.use('/api/classes', require('./routes/classRoutes'));
 app.use('/api/attendance', require('./routes/attendanceRoutes'));
 
 // Health check route
